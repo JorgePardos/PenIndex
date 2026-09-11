@@ -1,0 +1,10 @@
+name: hbond_pi_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - mdanalysis>=2.4.0
+  - pandas>=1.5.0
+  - numpy>=1.23.0
+  - pyyaml>=6.0

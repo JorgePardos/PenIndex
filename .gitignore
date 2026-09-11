@@ -1,0 +1,33 @@
+# Environments (recreate via enviroment.yml / README, never commit these)
+hbond_pi_env/
+.venv/
+venv/
+env/
+
+# Per-run outputs from output.directory in config.yaml (your own analyses;
+# regenerable from config.yaml + the input structure, not source code)
+results_wt/
+results_d20e/
+results_*/
+
+# Real, unpublished research data/results and superseded prototypes - kept
+# locally for reference, never tracked in this repo
+earp.pdb
+hbonds_standard_stats.csv
+visualize_hbonds.pml
+Ideas_futuro.docx
+distances.py
+penIndex_jorge.py
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Claude Code local settings (machine-specific, not shared)
+.claude
+
+# OS
+.DS_Store
+Thumbs.db

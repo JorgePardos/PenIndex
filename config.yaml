@@ -1,0 +1,113 @@
+# ======================================================================================
+# CONFIGURATION FILE: Penetration Index & Hydrogen Bond Analyzer
+# ======================================================================================
+# This file controls the execution mode, system paths, and geometric parameters 
+# for the MD/QM-MM analysis, avoiding the need to modify the underlying Python code.
+
+system:
+  # Path to the molecular structure. Strictly required.
+  # - Any MDAnalysis-native format (PDB, Amber prmtop, Gromacs, ...): paired
+  #   with the optional 'trajectory' below.
+  # - A Gaussian output (.log/.out): loaded directly via cclib, no
+  #   'trajectory' needed. Every geometry stored in the file (each
+  #   optimization step, IRC point, or relaxed-scan point) becomes a
+  #   trajectory frame, so start/stop/step_frame below select QM steps the
+  #   same way they'd select MD frames.
+  # "earp.pdb" here is a local example structure, not tracked in this repo
+  # (it's unpublished research data) - point this at your own structure file.
+  topology: "earp.pdb"
+
+  # Trajectory is optional, and only used for MDAnalysis-native topologies.
+  # If analyzing a single static structure (or a QM output), comment this out.
+  # trajectory: "dinamica.xtc"
+  
+  # Slicing parameters for the trajectory (0-indexed).
+  start_frame: 0                # Frame to start reading from
+  stop_frame: -1                # Frame to stop at (-1 reads until the end)
+  step_frame: 1                 # Stride (e.g., 5 evaluates 1 out of every 5 frames)
+
+  # If true, refines the flat sp2 default used for carbon's covalent radius
+  # (RADII['C']) with the per-atom hybridization (sp/sp2/sp3) detected from
+  # the topology file above via hybridization_analyzer.py. Requires rdkit
+  # (.pdb/.xyz), cclib (Gaussian .log/.out), or parmed (.prmtop/.top) to be
+  # installed, matching the topology's format. Falls back to the flat default
+  # (with a warning) if the format isn't supported or a dependency is missing.
+  dynamic_carbon_radii: false
+
+hbond_params:
+  # Geometric cutoffs used for the FIRST pass of detection (loose cutoffs recommended).
+  max_distance: 3.8             # Maximum Donor-Acceptor distance (Angstroms)
+  min_angle: 120.0              # Minimum Donor-Hydrogen-Acceptor angle (Degrees)
+
+analysis:
+  # Selection strings using MDAnalysis syntax.
+  # Use "all" for an unbiased sweep, or restrict to specific residues for speed.
+  donors: "resname TRH"                 # e.g., "resname TYR or resid 10 to 50"
+  acceptors: "all"              # e.g., "resname LIG"
+
+  # --- EXECUTION MODE SWITCH ---
+  # false (Standard Mode): Aggregates total average properties over the trajectory.
+  #                        Best for classical MD. Generates a PyMOL summary script.
+  # true  (Reactive Mode): Tracks the exact frame-by-frame breaking/forming events.
+  #                        Best for QM/MM or ReaxFF reactive trajectories.
+  reactive_mode: false
+
+  # Optional. The .pml PyMOL script is always generated in standard mode;
+  # this additionally has it ray-trace a print-sized PNG and/or save an
+  # editable .pse session when the script is run. Requires actually running
+  # the generated .pml in a working PyMOL install (this project only writes
+  # the script, it never invokes PyMOL itself). A separate legend PNG
+  # (color -> PI range) is generated alongside, since PyMOL can't draw one.
+  #
+  # label_mode controls the text shown on each contact: 'pi' (default -
+  # the Penetration Index as a percentage), 'distance' (PyMOL's native
+  # raw H...A/A-B distance in Angstrom), or 'both'.
+  # pymol_render:
+  #   png: true
+  #   session: false
+  #   width_inches: 8.0
+  #   dpi: 300
+  #   label_mode: "pi"
+
+  # Set to false to skip the D-H...A hydrogen-bond triad detector above
+  # (e.g. if you only care about the generic interaction scan below).
+  hbond_enabled: true
+
+  # --- GENERIC INTERACTION SCAN ---
+  # Detects the Penetration Index between ANY pair of atoms in selection_1 and
+  # selection_2 (no donor/hydrogen/acceptor geometry required). This is the
+  # general-purpose detector covering the full covalent <-> non-covalent
+  # continuum described in Echeverria & Alvarez (Chem. Sci. 2023): van der
+  # Waals contacts (PI ~ 0%), hydrogen bonds and secondary interactions
+  # (PI ~ 20-70%), and covalent or metal-metal bonds (PI >= ~90%).
+  generic_interactions:
+    enabled: false
+    selection_1: "protein"
+    selection_2: "protein"
+    # First-pass distance cutoff (Angstroms). Keep this generous (contacts up
+    # to the sum of van der Waals radii, ~4-4.5 A for most element pairs, will
+    # have PI >= 0%); anything beyond it is dropped before the PI is computed.
+    max_distance: 4.0
+
+    # Optional. Adds Avg_P_Atom1/Avg_P_Atom2/Crust_Width_Ratio columns to the
+    # standard-mode CSV: the individual, atom-specific penetration indices
+    # from Echeverria & Alvarez (Chem. Sci. 2024, 15, 12166-12168), useful
+    # when the two interacting atoms have very different van der Waals crust
+    # widths (e.g. a light atom against a heavy metal), where the plain PI(%)
+    # column alone can be harder to interpret. Warns if any detected pair is
+    # notably mismatched (crust-width ratio > 3).
+    include_individual_penetrations: false
+
+# Optional. Controls where output files (CSV/.pml) are written, so multiple
+# runs/systems don't overwrite each other. Omit this whole block to keep the
+# previous behavior (write to the current directory with no prefix).
+# output:
+#   directory: "results"     # created automatically if it doesn't exist
+#   prefix: "earp_"           # prepended to every output filename
+
+# Optional. Writes a run_manifest.json alongside the other outputs recording
+# the exact resolved config, timestamp, and key package versions (numpy,
+# pandas, scipy, MDAnalysis, matplotlib, pyyaml) used for this run - a
+# reproducibility record for a manuscript's methods section / SI.
+# provenance:
+#   enabled: true
